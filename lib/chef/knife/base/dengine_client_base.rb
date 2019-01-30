@@ -1,8 +1,22 @@
 require 'chef/knife'
 require 'aws-sdk'
+require 'fog/azurerm'
+require 'azure_mgmt_compute'
+require 'azure_mgmt_network'
+require 'azure_mgmt_resources'
+require 'azure_mgmt_storage'
 
 module Engine
   module DengineClientBase
+
+    include Azure::ARM::Compute
+    include Azure::ARM::Compute::Models
+    include Azure::ARM::Network
+    include Azure::ARM::Network::Models
+    include Azure::ARM::Resources
+    include Azure::ARM::Resources::Models
+    include Azure::ARM::Storage
+    include Azure::ARM::Storage::Models
 
     def self.included(includer)
       includer.class_eval do
@@ -79,6 +93,65 @@ module Engine
             "https://www.googleapis.com/auth/compute"
           ]
         )
+      end
+
+#----------------The client initiation for AZURE-------------------------------
+
+      def azure_compute_client
+
+        @azure_compute_client ||= begin
+            token_provider = MsRestAzure::ApplicationTokenProvider.new(Chef::Config[:knife][:azure_tenant_id], Chef::Config[:knife][:azure_client_id], Chef::Config[:knife][:azure_client_secret])
+            credentials = MsRest::TokenCredentials.new(token_provider)
+            azure_compute_client = ComputeManagementClient.new(credentials)
+        end
+        @azure_compute_client.subscription_id = Chef::Config[:knife][:azure_subscription_id]
+        @azure_compute_client
+      end
+
+      def azure_network_client
+
+        @azure_network_client ||= begin
+            token_provider = MsRestAzure::ApplicationTokenProvider.new(Chef::Config[:knife][:azure_tenant_id], Chef::Config[:knife][:azure_client_id], Chef::Config[:knife][:azure_client_secret])
+            credentials = MsRest::TokenCredentials.new(token_provider)
+            azure_network_client = NetworkManagementClient.new(credentials)
+        end
+        @azure_network_client.subscription_id = Chef::Config[:knife][:azure_subscription_id]
+        @azure_network_client  
+      end
+
+      def azure_resource_client
+
+        @azure_resource_client ||= begin
+            token_provider = MsRestAzure::ApplicationTokenProvider.new(Chef::Config[:knife][:azure_tenant_id], Chef::Config[:knife][:azure_client_id], Chef::Config[:knife][:azure_client_secret])
+            credentials = MsRest::TokenCredentials.new(token_provider)
+            azure_resource_client = Azure::ARM::Resources::ResourceManagementClient.new(credentials)
+        end
+        @azure_resource_client.subscription_id = Chef::Config[:knife][:azure_subscription_id]
+        @azure_resource_client
+      end
+
+      def azure_storage_client
+
+        @azure_storage_client ||= begin
+            token_provider = MsRestAzure::ApplicationTokenProvider.new(Chef::Config[:knife][:azure_tenant_id], Chef::Config[:knife][:azure_client_id], Chef::Config[:knife][:azure_client_secret])
+            credentials = MsRest::TokenCredentials.new(token_provider)
+            azure_storage_client = Azure::ARM::Storage::StorageManagementClient.new(credentials)
+        end
+        @azure_storage_client.subscription_id = Chef::Config[:knife][:azure_subscription_id]
+        @azure_storage_client
+      end
+
+      def azure_network_service
+
+        @azure_network_service ||= begin
+            azure_network_service = Fog::Network::AzureRM.new(
+                                     tenant_id: (Chef::Config[:knife][:azure_tenant_id]), 
+                                     client_id: (Chef::Config[:knife][:azure_client_id]), 
+                                     client_secret: (Chef::Config[:knife][:azure_client_secret]), 
+                                     subscription_id: (Chef::Config[:knife][:azure_subscription_id]), 
+                                     :environment => 'AzureCloud')
+        end
+        @azure_network_service
       end
 
 #------------------------------------------------------------------------------------------
